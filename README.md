@@ -17,8 +17,8 @@ Source File
 
 ## Prerequisites
 
-- [AnchorScope v2.0.0](https://github.com/kmlaborat/AnchorScope)
-- [AnchorEdit v0.2.0](https://github.com/kmlaborat/AnchorEdit)
+- [AnchorScope](https://github.com/kmlaborat/AnchorScope) v2.0.0 or later
+- [AnchorEdit](https://github.com/kmlaborat/AnchorEdit) v0.2.0 or later
 
 Install both:
 ```bash
