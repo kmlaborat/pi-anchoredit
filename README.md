@@ -1,28 +1,34 @@
 # pi-anchoredit
 
-**pi-anchoredit** is the reference implementation of the AnchorEdit specification for Pi.
+A skill for [pi coding agent](https://pi.dev) that enables
+targeted, hash-verified code editing using AnchorScope and AnchorEdit.
 
-It enables LLM agents to perform safe, deterministic, and hierarchical code edits using AnchorScope.
-
-## Overview
-
-pi-anchoredit implements the Buffer-First and Tree-Navigation editing paradigms defined in AnchorEdit.
-
-- Specification: https://github.com/kmlaborat/anchoredit
-- Protocol: https://github.com/kmlaborat/AnchorScope
-
-## Features
-
-- Root Scope Establishment
-- Buffer-First Editing
-- Tree-Navigation Editing
-- Deterministic Verification via AnchorScope
-- Automatic Recovery from Errors
-
-## Architecture
+## How it Works
 
 ```
-LLM → AnchorEdit → pi-anchoredit → AnchorScope → Source Code
+LLM Agent
+  ↓ uses anchoredit skill
+Sliding Bisection (anchoredit search)
+  ↓ narrows to target region
+AnchorScope (anchorscope read / write)
+  ↓ hash-verified deterministic edit
+Source File
+```
+
+## Prerequisites
+
+- [AnchorScope v2.0.0](https://github.com/kmlaborat/AnchorScope)
+- [AnchorEdit v0.2.0](https://github.com/kmlaborat/AnchorEdit)
+
+Install both:
+```bash
+# AnchorScope
+git clone https://github.com/kmlaborat/AnchorScope
+cd AnchorScope && cargo install --path .
+
+# AnchorEdit
+git clone https://github.com/kmlaborat/AnchorEdit
+cd AnchorEdit && cargo install --path .
 ```
 
 ## Installation
@@ -31,10 +37,12 @@ LLM → AnchorEdit → pi-anchoredit → AnchorScope → Source Code
 
 ```bash
 # User-level
-git clone https://github.com/kmlaborat/pi-anchoredit ~/.pi/agent/skills/pi-anchoredit
+git clone https://github.com/kmlaborat/pi-anchoredit \
+  ~/.pi/agent/skills/pi-anchoredit
 
 # Or project-level
-git clone https://github.com/kmlaborat/pi-anchoredit .pi/skills/pi-anchoredit
+git clone https://github.com/kmlaborat/pi-anchoredit \
+  .pi/skills/pi-anchoredit
 ```
 
 ### Claude Code
@@ -56,7 +64,7 @@ ln -s ~/pi-anchoredit/anchoredit ~/.claude/skills/anchoredit
 
 ## Status
 
-Experimental reference implementation.
+Experimental. v0.1.0.
 
 ## License
 
