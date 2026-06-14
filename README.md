@@ -25,6 +25,35 @@ pi-anchoredit implements the Buffer-First and Tree-Navigation editing paradigms 
 LLM → AnchorEdit → pi-anchoredit → AnchorScope → Source Code
 ```
 
+## Installation
+
+### pi-coding-agent
+
+```bash
+# User-level
+git clone https://github.com/kmlaborat/pi-anchoredit ~/.pi/agent/skills/pi-anchoredit
+
+# Or project-level
+git clone https://github.com/kmlaborat/pi-anchoredit .pi/skills/pi-anchoredit
+```
+
+### Claude Code
+
+Claude Code looks one level deep for SKILL.md files.
+Clone and symlink the skill folder:
+
+```bash
+git clone https://github.com/kmlaborat/pi-anchoredit ~/pi-anchoredit
+mkdir -p ~/.claude/skills
+ln -s ~/pi-anchoredit/anchoredit ~/.claude/skills/anchoredit
+```
+
+## Available Skills
+
+| Skill | Description |
+| :--- | :--- |
+| [anchoredit](anchoredit/SKILL.md) | Targeted, hash-verified code editing via AnchorScope and AnchorEdit |
+
 ## Status
 
 Experimental reference implementation.
