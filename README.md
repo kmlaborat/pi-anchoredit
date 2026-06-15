@@ -39,6 +39,12 @@ cd AnchorEdit && cargo install --path .
 pi install git:github.com/kmlaborat/pi-anchoredit
 ```
 
+### Try without installing
+
+```bash
+pi -e git:github.com/kmlaborat/pi-anchoredit
+```
+
 ### Claude Code
 
 Claude Code looks one level deep for SKILL.md files.
@@ -47,14 +53,14 @@ Clone and symlink the skill folder:
 ```bash
 git clone https://github.com/kmlaborat/pi-anchoredit ~/pi-anchoredit
 mkdir -p ~/.claude/skills
-ln -s ~/pi-anchoredit/anchoredit ~/.claude/skills/anchoredit
+ln -s ~/pi-anchoredit/skills/anchoredit ~/.claude/skills/anchoredit
 ```
 
 ## Available Skills
 
 | Skill | Description |
 | :--- | :--- |
-| [anchoredit](anchoredit/SKILL.md) | Targeted, hash-verified code editing via AnchorScope and AnchorEdit |
+| [anchoredit](skills/anchoredit/SKILL.md) | Targeted, hash-verified code editing via AnchorScope and AnchorEdit |
 
 ## Status
 

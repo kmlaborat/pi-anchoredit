@@ -1,0 +1,10 @@
+{
+  "name": "pi-anchoredit",
+  "version": "0.1.0",
+  "description": "Targeted, hash-verified code editing skill for pi coding agent using AnchorScope and AnchorEdit.",
+  "keywords": ["pi-package"],
+  "license": "MIT",
+  "pi": {
+    "skills": ["./skills"]
+  }
+}
