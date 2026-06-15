@@ -1,7 +1,6 @@
 ---
 name: anchoredit
-description: Targeted, hash-verified code editing using AnchorScope and AnchorEdit. Use when editing a specific part of a file — fixing bugs, refactoring functions, updating configuration values, or replacing any text block. Do NOT use full-file rewrites. Always use this skill for precise targeted edits.
-compatibility: "Requires anchoredit and anchorscope installed. Install: cargo install --path . in each repo."
+description: "Targeted, hash-verified code editing using AnchorScope and AnchorEdit. Use when editing a specific part of a file — fixing bugs, refactoring functions, updating configuration values, or replacing any text block. Do NOT use full-file rewrites. Always use this skill for precise targeted edits."
 ---
 
 # anchoredit
@@ -25,6 +24,22 @@ anchor = scope
 The anchor IS the target. Protection breadth equals anchor length.
 Choose a wider anchor to protect a wider region.
 ```
+
+## CRITICAL RULES
+
+> **NEVER construct anchors manually.**
+> Anchors MUST come from `anchoredit search` output only.
+> Do NOT write anchor strings from memory, from file reads, or from grep output.
+> A manually constructed anchor may match multiple locations and cause wrong edits.
+
+> **When `done:true` is returned, use that anchor immediately.**
+> Do NOT keep narrowing after `done:true`. Proceed to Phase 3 (Read) right away.
+> The `anchor` field in the `done:true` response is ready to use as-is.
+
+> **`termination_bytes` controls search depth, NOT anchor length.**
+> It is the threshold at which the search stops bisecting.
+> A larger `termination_bytes` produces a wider anchor; a smaller value produces a narrower one.
+> Do NOT reduce `termination_bytes` to "trim" an anchor — use range narrowing instead.
 
 ## Editing Loop
 
@@ -62,7 +77,7 @@ Use `anchoredit search` to narrow down to the target region.
 # Initial call (full file)
 anchoredit search --file <path>
 
-# Returns:
+# Returns segments to choose from:
 # {
 #   "range": [0.0, 1.0],
 #   "size_bytes": 8292,
@@ -76,11 +91,11 @@ anchoredit search --file <path>
 # Select the segment containing the target, then narrow:
 anchoredit search --file <path> --range 0.3:0.7
 
-# Repeat until done:true
+# When done:true is returned, STOP and proceed to Phase 3 immediately:
 # {
 #   "done": true,
 #   "size_bytes": 342,
-#   "anchor": "<the target text>"
+#   "anchor": "<use this anchor as-is in Phase 3>"
 # }
 ```
 
@@ -88,10 +103,20 @@ anchoredit search --file <path> --range 0.3:0.7
 where the target is most likely to appear. If the target spans a boundary,
 select the center segment (B).
 
-**If anchor is too large** (`size_bytes` is still large after `done:true`):
+**When `done:true` appears:** Extract the `anchor` field and save it to a file.
+Do NOT keep narrowing. Do NOT modify the anchor. Proceed to Phase 3.
 
 ```bash
-anchoredit search --file <path> --range <last_range> --termination-bytes 256
+# Save the anchor from done:true response to a file:
+printf '%s' '<anchor field from done:true>' > /tmp/anchor.txt
+```
+
+**If anchor is too wide** (contains too much surrounding code):
+Narrow the range further before the search terminates:
+
+```bash
+# Use a smaller range, not a smaller --termination-bytes:
+anchoredit search --file <path> --range 0.30:0.45
 ```
 
 **To go back one step:** re-run with the previous range value.
@@ -101,24 +126,27 @@ Range history is your undo stack — keep track of it.
 
 ### Phase 3: Read — Confirm Match and Get scope_hash
 
+Pass the anchor from Phase 2 directly to `anchorscope read`.
+Do NOT modify the anchor. Do NOT reconstruct it from memory.
+
 ```bash
-anchorscope read --file <path> --anchor-file <anchor_file>
-# or inline (for short anchors):
-anchorscope read --file <path> --anchor "<anchor_text>"
+anchorscope read --file <path> --anchor-file /tmp/anchor.txt
 
 # Returns:
 # scope_hash=3a7f1c2d4e5b6f8a
 # content=<matched bytes>
 ```
 
-Verify that `content` matches what you intend to replace.
+Read the `content` carefully. This is exactly what will be replaced.
+Construct your replacement based on this `content`.
 Save `scope_hash` — you will need it for write.
 
-**If NO_MATCH:** The anchor does not exist in the file. Re-run search with
-a wider `--termination-bytes` or adjust the anchor text.
+**If NO_MATCH:** The anchor from search does not match the file.
+This should not happen if the anchor came from `anchoredit search`.
+Re-run search to get a fresh anchor.
 
-**If MULTIPLE_MATCHES:** The anchor is not unique. Use a wider anchor
-that includes more surrounding context.
+**If MULTIPLE_MATCHES:** The anchor matches more than one location.
+Re-run search with a wider `--termination-bytes` to get a longer anchor.
 
 ---
 
@@ -127,14 +155,14 @@ that includes more surrounding context.
 ```bash
 anchorscope write \
   --file <path> \
-  --anchor-file <anchor_file> \
+  --anchor-file /tmp/anchor.txt \
   --expected-hash <scope_hash> \
-  --replacement-file <replacement_file>
+  --replacement-file /tmp/replacement.txt
 
-# or inline:
+# or inline for short replacements:
 anchorscope write \
   --file <path> \
-  --anchor "<anchor_text>" \
+  --anchor-file /tmp/anchor.txt \
   --expected-hash <scope_hash> \
   --replacement "<new_text>"
 
@@ -148,13 +176,13 @@ Re-run `anchorscope read` to get a fresh `scope_hash`, then retry write.
 
 ## Error Handling
 
-| Error              | Cause                                    | Action                                              |
-| :----------------- | :--------------------------------------- | :-------------------------------------------------- |
-| `NO_MATCH`         | Anchor not found in file                 | Widen anchor or re-run search                       |
-| `MULTIPLE_MATCHES` | Anchor not unique                        | Add more surrounding context to anchor              |
-| `HASH_MISMATCH`    | File changed between read and write      | Re-run read to refresh scope_hash                   |
-| `IO_ERROR`         | File permissions or path issue           | Check file path and permissions                     |
-| done:true too wide | size_bytes still large after termination | Retry search with smaller --termination-bytes value |
+| Error              | Cause                                         | Action                                                   |
+| :----------------- | :-------------------------------------------- | :------------------------------------------------------- |
+| `NO_MATCH`         | Anchor not found in file                      | Re-run search to get a fresh anchor                      |
+| `MULTIPLE_MATCHES` | Anchor not unique                             | Re-run search with larger `--termination-bytes`          |
+| `HASH_MISMATCH`    | File changed between read and write           | Re-run read to refresh scope_hash                        |
+| `IO_ERROR`         | File permissions or path issue                | Check file path and permissions                          |
+| anchor too wide    | `done:true` anchor contains too much context  | Narrow range before termination, not termination-bytes   |
 
 ---
 
@@ -172,10 +200,12 @@ Re-run `anchorscope read` to get a fresh `scope_hash`, then retry write.
 
 - **Don't** rewrite the full file. Always use targeted anchor-based edits.
 - **Don't** use line numbers as anchors. Lines shift; byte content doesn't.
-- **Don't** use a very short anchor (e.g., one word). It will likely cause `MULTIPLE_MATCHES`.
+- **Don't** construct anchors manually from memory, grep, or file reads.
+- **Don't** keep narrowing after `done:true`. Use the anchor immediately.
+- **Don't** reduce `--termination-bytes` to trim an anchor. Use range narrowing instead.
 - **Don't** skip `anchorscope read`. You need `scope_hash` before writing.
-- **Don't** ignore `size_bytes` in the search response. If it's still large, keep bisecting.
 - **Don't** invent the `scope_hash`. Always get it from `anchorscope read`.
+- **Don't** modify the anchor between search and read. Use it as-is.
 
 ---
 
@@ -184,9 +214,10 @@ Re-run `anchorscope read` to get a fresh `scope_hash`, then retry write.
 **Before running `anchorscope write`, verify:**
 
 - [ ] `anchoredit search` returned `done:true`
-- [ ] `anchor` from search result exists in the file (confirmed by `anchorscope read`)
+- [ ] `anchor` was taken directly from the `done:true` response (not constructed manually)
+- [ ] `anchor` was passed to `anchorscope read` without modification
 - [ ] `scope_hash` obtained from `anchorscope read` (not invented)
-- [ ] `content` from read matches the intended target
+- [ ] `content` from read was used as the basis for `replacement`
 - [ ] `replacement` is ready and correct
 - [ ] `--expected-hash` matches the `scope_hash` from read
 
@@ -200,23 +231,30 @@ If ANY item is not checked → Stop. Do not write. Fix the unchecked item first.
 # 1. Comprehend
 cat src/calculator.rs
 
-# 2. Search (target is around 40% into the file)
+# 2. Search — repeat until done:true
 anchoredit search --file src/calculator.rs
-# → Select B (30%-70%)
+# → segments returned, select B
 anchoredit search --file src/calculator.rs --range 0.3:0.7
-# → Select A (30%-52%)
+# → segments returned, select A
 anchoredit search --file src/calculator.rs --range 0.3:0.52
-# → done:true, anchor = "fn calculate_area..."
+# → done:true
+# {
+#   "done": true,
+#   "size_bytes": 58,
+#   "anchor": "fn calculate_area(width: f64, height: f64) -> f64 {\n    width * height\n}"
+# }
 
-# 3. Save anchor to file
-printf '%s' '<anchor text>' > /tmp/anchor.txt
+# 3. Save anchor directly from done:true (do NOT modify)
+printf '%s' 'fn calculate_area(width: f64, height: f64) -> f64 {\n    width * height\n}' > /tmp/anchor.txt
 
-# 4. Read
+# 4. Read — pass anchor as-is
 anchorscope read --file src/calculator.rs --anchor-file /tmp/anchor.txt
-# → scope_hash=3a7f1c2d4e5b6f8a
-# → content=fn calculate_area...
+# → scope_hash=7eebf351baac3a1a
+# → content=fn calculate_area(width: f64, height: f64) -> f64 {
+# →     width * height
+# → }
 
-# 5. Prepare replacement
+# 5. Prepare replacement based on content from read
 cat > /tmp/replacement.txt << 'EOF'
 fn calculate_area(width: f64, height: f64) -> f64 {
     if width < 0.0 || height < 0.0 {
@@ -230,9 +268,9 @@ EOF
 anchorscope write \
   --file src/calculator.rs \
   --anchor-file /tmp/anchor.txt \
-  --expected-hash 3a7f1c2d4e5b6f8a \
+  --expected-hash 7eebf351baac3a1a \
   --replacement-file /tmp/replacement.txt
-# → OK: written 312 bytes
+# → OK: written 509 bytes
 ```
 
 ---
