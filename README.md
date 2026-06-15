@@ -36,13 +36,7 @@ cd AnchorEdit && cargo install --path .
 ### pi-coding-agent
 
 ```bash
-# User-level
-git clone https://github.com/kmlaborat/pi-anchoredit \
-  ~/.pi/agent/skills/pi-anchoredit
-
-# Or project-level
-git clone https://github.com/kmlaborat/pi-anchoredit \
-  .pi/skills/pi-anchoredit
+pi install git:github.com/kmlaborat/pi-anchoredit
 ```
 
 ### Claude Code
