@@ -1,4 +1,4 @@
-# pi-anchorscope Specification
+# pi-anchoredit Specification
 
 Version: 2.0.0
 Status: Draft
@@ -10,7 +10,7 @@ be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119
 
 ## 1. Overview
 
-**pi-anchorscope** is a pi coding agent extension that provides hash-verified,
+**pi-anchoredit** is a pi coding agent extension that provides hash-verified,
 targeted file editing via [AnchorScope v2.0.0](https://github.com/kmlaborat/AnchorScope).
 
 It exposes three tools to the LLM:
