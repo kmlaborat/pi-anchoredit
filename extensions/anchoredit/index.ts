@@ -46,9 +46,11 @@ function resolveFilePath(filePath: string, cwd: string): string {
     try {
       // Use cygpath -w to translate mount-aware paths to Windows native format.
       // Available in Git Bash, MSYS2, Cygwin environments on Windows.
-      resolved = execSync("cygpath -w '" + filePath.replace(/'/g, "'\"'\"'") + "'", {
-        shell: true,
-      })
+      const shellPath: string = process.env.ComSpec ?? "/bin/sh";
+      resolved = execSync(
+        "cygpath -w '" + filePath.replace(/'/g, "'\"'\"'") + "'",
+        { shell: shellPath },
+      )
         .toString()
         .trim();
     } catch {

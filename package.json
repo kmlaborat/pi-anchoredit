@@ -2,10 +2,21 @@
   "name": "pi-anchoredit",
   "version": "2.0.0",
   "description": "Hash-verified targeted file editing for pi coding agent, powered by AnchorEdit v2.",
-  "keywords": ["pi-package"],
+  "keywords": [
+    "pi-package"
+  ],
   "license": "MIT",
   "pi": {
-    "skills": ["./skills"],
-    "extensions": ["./extensions/anchoredit"]
+    "skills": [
+      "./skills"
+    ],
+    "extensions": [
+      "./extensions/anchoredit"
+    ]
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.79.6",
+    "typebox": "^1.2.14",
+    "typescript": "^6.0.3"
   }
 }
