@@ -1,4 +1,4 @@
-# pi-anchorscope
+# pi-anchoredit
 
 Hash-verified targeted file editing for [pi coding agent](https://pi.dev),
 powered by [AnchorScope v2.0.0](https://github.com/kmlaborat/AnchorScope).
@@ -12,7 +12,7 @@ more precise editing tool that:
 - Verifies file state before writing (hash verification)
 - Guarantees zero modification outside the matched scope
 
-## Why pi-anchorscope?
+## Why pi-anchoredit?
 
 Hash-anchored edit tools like [oh-my-pi's Hashline](https://github.com/can1357/oh-my-pi) operate on **line-level content hashes** — the model references line anchors instead of reproducing text, which eliminates whitespace conflicts and ambiguous matches.
 
@@ -24,9 +24,9 @@ This works well for conventional source code, where edits naturally align with l
 
 In these cases, line-level anchoring becomes a limiting abstraction.
 
-## pi-anchorscope approach
+## pi-anchoredit approach
 
-pi-anchorscope removes the notion of "lines" entirely and instead operates on **exact byte-level anchors**.
+pi-anchoredit removes the notion of "lines" entirely and instead operates on **exact byte-level anchors**.
 
 * Anchors are matched as raw byte sequences
 * Edits target precise substrings within a file
@@ -42,7 +42,7 @@ This makes it particularly effective for:
 ## Positioning
 
 * **[oh-my-pi Hashline](https://github.com/can1357/oh-my-pi)**: optimized for *line-level editing efficiency*
-* **pi-anchorscope**: optimized for *intra-line precision and structure-agnostic editing*
+* **pi-anchoredit**: optimized for *intra-line precision and structure-agnostic editing*
 
 Rather than replacing line-based approaches, this project is designed as a **complementary tool for edge cases where line abstraction breaks down**.
 
@@ -65,7 +65,7 @@ export ANCHORSCOPE_BIN=/path/to/anchorscope
 ## Installation
 
 ```bash
-pi install git:github.com/kmlaborat/pi-anchorscope
+pi install git:github.com/kmlaborat/pi-anchoredit
 ```
 
 ## Tools
@@ -100,9 +100,9 @@ Requires `scope_hash` from a prior `anchorscope_read` call.
 ```
 LLM calls anchorscope_apply(file, anchor, content)
   ↓
-Extension: anchorscope read → scope_hash
+Extension: anchorscope_read → scope_hash
   ↓
-Extension: anchorscope write (hash-verified)
+Extension: anchorscope_write (hash-verified)
   ↓
 File updated — only the matched scope changed
 ```
@@ -112,13 +112,7 @@ File updated — only the matched scope changed
 | Document | Description |
 | :--- | :--- |
 | [docs/SPEC.md](docs/SPEC.md) | Extension and Skill specification |
-| [skills/anchorscope/SKILL.md](skills/anchorscope/SKILL.md) | LLM-facing usage guide |
-
-## Legacy (v1.x)
-
-The previous version of this package (based on AnchorScope v1.x concepts
-including Anchor Buffer, True ID, and multi-level anchoring) is archived
-in the [v1/](v1/) directory.
+| [skills/anchoredit/SKILL.md](skills/anchoredit/SKILL.md) | LLM-facing usage guide |
 
 ## Status
 
