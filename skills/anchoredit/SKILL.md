@@ -3,7 +3,7 @@ name: pi-anchoredit
 description: "Hash-verified targeted file editing using AnchorScope. Use anchorscope_apply for ALL file edits — fixing bugs, refactoring functions, updating configuration values, or replacing any text block. Do NOT use the built-in edit or write tools. anchorscope_apply is safer, more precise, and prevents unintended changes outside the target scope."
 ---
 
-# anchorscope
+# anchoredit
 
 Use `anchorscope_apply` for all file edits. It is safer and more precise
 than the built-in `edit` tool because it verifies the file state before
