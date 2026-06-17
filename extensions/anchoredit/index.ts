@@ -2,8 +2,8 @@
  * AnchorEdit Extension for pi
  *
  * Registers anchoredit_apply, a single high-level tool for hash-verified
- * targeted file editing. Internally calls the anchoredit CLI binary
- * (which wraps AnchorScope's read/write via a Rust library dependency).
+ * targeted file editing. Internally chains anchoredit read + write
+ * (the anchoredit CLI does not have a combined "apply" subcommand).
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -71,6 +71,45 @@ function resolveFilePath(filePath: string, cwd: string): string {
   return filePath;
 }
 
+// Parse "scope_hash=<hex>\ncontent=<text>" from stdout
+function parseReadOutput(stdout: string): { scopeHash: string; content: string } {
+  const hashMatch = stdout.match(/^scope_hash=(.+)$/m);
+  const contentMatch = stdout.match(/^content=(.*)$/m);
+
+  if (!hashMatch) {
+    throw new Error(`anchoredit_apply: could not parse scope_hash from read output`);
+  }
+  if (!contentMatch) {
+    throw new Error(`anchoredit_apply: could not parse content from read output`);
+  }
+
+  return {
+    scopeHash: hashMatch[1].trim(),
+    content: contentMatch[1],
+  };
+}
+
+// Check CLI output for known error markers and throw a descriptive error
+function checkCliError(source: string, result: { code: number; stdout: string; stderr: string }): never {
+  const output = result.stderr || result.stdout || "";
+  if (output.includes("NO_MATCH")) {
+    throw new Error(
+      `anchoredit_apply: NO_MATCH — the anchor was not found in the file. Check the file contents and revise the anchor.`,
+    );
+  }
+  if (output.includes("MULTIPLE_MATCHES")) {
+    throw new Error(
+      `anchoredit_apply: MULTIPLE_MATCHES — the anchor matched more than once. Use a longer, more specific anchor.`,
+    );
+  }
+  if (output.includes("HASH_MISMATCH")) {
+    throw new Error(
+      `anchoredit_apply: HASH_MISMATCH — the file content has changed since the read step. Retry the apply.`,
+    );
+  }
+  throw new Error(`${source} failed (exit ${result.code}): ${output.trim()}`);
+}
+
 export default function (pi: ExtensionAPI) {
   const bin = getAnchorEditBin();
 
@@ -106,47 +145,52 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const filePath = resolveFilePath(params.file, ctx.cwd);
 
+      // Step 1: read → get scope_hash
+      const readResult = await pi.exec(
+        bin,
+        ["read", "--file", filePath, "--anchor", params.anchor],
+        { signal },
+      );
+
+      if (readResult.code !== 0) {
+        checkCliError("anchoredit_apply read", readResult);
+      }
+
+      const parsed = parseReadOutput(readResult.stdout);
+      const scopeHash = parsed.scopeHash;
+
+      // Step 2: write → hash-verified write
       return withFileMutationQueue(filePath, async () => {
-        const result = await pi.exec(
+        const writeResult = await pi.exec(
           bin,
           [
-            "apply",
+            "write",
             "--file",
             filePath,
             "--anchor",
             params.anchor,
+            "--expected-hash",
+            scopeHash,
             "--replacement",
             params.content,
           ],
           { signal },
         );
 
-        if (result.code !== 0) {
-          const output = result.stderr || result.stdout || "";
-          if (output.includes("NO_MATCH")) {
-            throw new Error(
-              `anchoredit_apply: NO_MATCH — the anchor was not found in the file. Check the file contents and revise the anchor.`,
-            );
-          }
-          if (output.includes("MULTIPLE_MATCHES")) {
-            throw new Error(
-              `anchoredit_apply: MULTIPLE_MATCHES — the anchor matched more than once. Use a longer, more specific anchor.`,
-            );
-          }
-          throw new Error(
-            `anchoredit_apply failed (exit ${result.code}): ${output.trim()}`,
-          );
+        if (writeResult.code !== 0) {
+          checkCliError("anchoredit_apply write", writeResult);
         }
 
         return {
           content: [
             {
               type: "text",
-              text: `Successfully applied edit to ${params.file}\n${result.stdout.trim()}`,
+              text: `Successfully applied edit to ${params.file}\n${writeResult.stdout.trim()}`,
             },
           ],
           details: {
             file: filePath,
+            scope_hash: scopeHash,
           },
         };
       });

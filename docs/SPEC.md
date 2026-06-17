@@ -29,7 +29,8 @@ It exposes a single tool to the LLM:
 LLM Agent
   ↓ anchoredit_apply(file, anchor, content)
 pi-anchoredit Extension
-  ↓ anchoredit apply --file --anchor --replacement
+  ↓ anchoredit read  --file --anchor       → scope_hash
+  ↓ anchoredit write --file --anchor --expected-hash --replacement
 AnchorEdit v2 (Rust)
   ↓ anchorscope::read() + anchorscope::write() (library calls)
 AnchorScope v2.0.0
@@ -42,6 +43,7 @@ writing is performed by the AnchorEdit binary (which uses AnchorScope as
 a Rust library dependency). The extension handles:
 
 - Path resolution (including Windows/Unix path conversion)
+- Chaining `read` and `write` in `anchoredit_apply`
 - File mutation queuing (`withFileMutationQueue`) to prevent race conditions
 - Structured error reporting to the LLM
 
@@ -67,7 +69,11 @@ subcommand, which internally performs read (to get scope_hash) then write
 
 ```
 1. Resolve file path
-2. anchoredit apply --file <file> --anchor <anchor> --replacement <content>
+2. anchoredit read --file <file> --anchor <anchor>
+   → scope_hash
+3. anchoredit write --file <file> --anchor <anchor>
+               --expected-hash <scope_hash>
+               --replacement <content>
    → OK: written N bytes
 ```
 
