@@ -96,5 +96,5 @@ In most cases, `anchorscope_apply` is sufficient.
 
 ## References
 
-- Extension API: https://github.com/kmlaborat/pi-anchorscope/blob/main/docs/SPEC.md
 - AnchorScope: https://github.com/kmlaborat/AnchorScope
+- AnchorEdit: https://github.com/kmlaborat/AnchorEdit
