@@ -11,19 +11,15 @@ be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119
 ## 1. Overview
 
 **pi-anchoredit** is a pi coding agent extension that provides hash-verified,
-targeted file editing via [AnchorScope v2.0.0](https://github.com/kmlaborat/AnchorScope).
+targeted file editing via AnchorEdit v2 (which wraps AnchorScope v2.0.0).
 
-It exposes three tools to the LLM:
+It exposes a single tool to the LLM:
 
-| Tool | Level | Use |
-| :--- | :--- | :--- |
-| `anchorscope_apply` | High-level | Primary tool for all file edits |
-| `anchorscope_read` | Low-level | Read a scope and get scope_hash |
-| `anchorscope_write` | Low-level | Write with hash verification |
+| Tool | Use |
+| :--- | :--- |
+| `anchoredit_apply` | The only tool needed for file edits |
 
-**Recommended workflow:** Use `anchorscope_apply` for all edits.
-Use `anchorscope_read` and `anchorscope_write` only when fine-grained
-control over the read/write cycle is needed.
+**Recommended workflow:** Use `anchoredit_apply` for all edits.
 
 ---
 
@@ -31,20 +27,21 @@ control over the read/write cycle is needed.
 
 ```
 LLM Agent
-  ↓ anchorscope_apply(file, anchor, content)
-pi-anchorscope Extension
-  ↓ anchorscope read  →  scope_hash
-  ↓ anchorscope write →  hash-verified replacement
+  ↓ anchoredit_apply(file, anchor, content)
+pi-anchoredit Extension
+  ↓ anchoredit apply --file --anchor --replacement
+AnchorEdit v2 (Rust)
+  ↓ anchorscope::read() + anchorscope::write() (library calls)
 AnchorScope v2.0.0
   ↓
 Source File
 ```
 
-pi-anchorscope is a thin wrapper. All byte-level matching, hashing, and
-writing is performed by the AnchorScope binary. The extension handles:
+pi-anchoredit is a thin wrapper. All byte-level matching, hashing, and
+writing is performed by the AnchorEdit binary (which uses AnchorScope as
+a Rust library dependency). The extension handles:
 
 - Path resolution (including Windows/Unix path conversion)
-- Chaining `read` and `write` in `anchorscope_apply`
 - File mutation queuing (`withFileMutationQueue`) to prevent race conditions
 - Structured error reporting to the LLM
 
@@ -52,10 +49,11 @@ writing is performed by the AnchorScope binary. The extension handles:
 
 ## 3. Extension API (Normative)
 
-### 3.1 anchorscope_apply (Recommended)
+### 3.1 anchoredit_apply
 
-The primary tool for all file edits. Internally performs `read` then `write`.
-The LLM does not need to manage `scope_hash`.
+The primary and only tool for all file edits. Calls the `anchoredit apply`
+subcommand, which internally performs read (to get scope_hash) then write
+(with hash verification). The LLM does not need to manage `scope_hash`.
 
 **Parameters:**
 
@@ -63,17 +61,13 @@ The LLM does not need to manage `scope_hash`.
 | :--- | :--- | :--- |
 | `file` | string | Path to the file to edit |
 | `anchor` | string | Exact byte sequence to match. Must appear exactly once in the file. |
-| `content` | string | Complete replacement for the matched anchor scope. |
+| `content` | string | Complete replacement for the matched anchor text. |
 
 **Internal flow:**
 
 ```
 1. Resolve file path
-2. anchorscope read --file <file> --anchor <anchor>
-   → scope_hash
-3. anchorscope write --file <file> --anchor <anchor>
-               --expected-hash <scope_hash>
-               --replacement <content>
+2. anchoredit apply --file <file> --anchor <anchor> --replacement <content>
    → OK: written N bytes
 ```
 
@@ -89,96 +83,42 @@ OK: written N bytes
 | :--- | :--- | :--- |
 | `NO_MATCH` | anchor not found in file | Revise anchor string |
 | `MULTIPLE_MATCHES` | anchor not unique | Use a longer anchor |
-| `HASH_MISMATCH` | file changed between read and write | Retry anchorscope_apply |
+| `HASH_MISMATCH` | file changed between read and write | Retry anchoredit_apply |
 | `IO_ERROR` | file not found or permission denied | Check file path |
 
 ---
 
-### 3.2 anchorscope_read (Low-level)
-
-Read a scope from a file and return its `scope_hash` and matched content.
-
-> **Note:** In most cases, use `anchorscope_apply` instead.
-> Use `anchorscope_read` only when you need to inspect content before
-> deciding on a replacement.
-
-**Parameters:**
-
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `file` | string | Path to the file |
-| `anchor` | string | Exact byte sequence to match |
-
-**Output on success:**
-
-```
-scope_hash: <16-char hex>
-content:
-<matched bytes>
-```
-
-**Error conditions:** Same as `anchorscope_apply`.
-
----
-
-### 3.3 anchorscope_write (Low-level)
-
-Write a replacement to a file scope with hash verification.
-
-> **Note:** In most cases, use `anchorscope_apply` instead.
-> Use `anchorscope_write` only after a prior `anchorscope_read` call.
-> Never invent or guess `scope_hash`.
-
-**Parameters:**
-
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `file` | string | Path to the file |
-| `anchor` | string | Exact byte sequence to match |
-| `expected_hash` | string | `scope_hash` from a prior `anchorscope_read` call |
-| `replacement` | string | New content to replace the matched scope |
-
-**Output on success:**
-
-```
-OK: written N bytes
-```
-
-**Error conditions:** Same as `anchorscope_apply`.
-
----
-
-### 3.4 Path Resolution
+### 3.2 Path Resolution
 
 On Windows, Unix-style paths (e.g., `/tmp/file.rs`) are resolved via
 `cygpath -w` when available (Git Bash / MSYS2 environments).
-If `cygpath` is not available, the original path is passed to AnchorScope,
+If `cygpath` is not available, the original path is passed to AnchorEdit,
 which will return `IO_ERROR: file not found` for unresolvable paths.
 
 Relative paths are resolved against the agent's current working directory (`ctx.cwd`).
 
 ---
 
-### 3.5 File Mutation Safety
+### 3.3 File Mutation Safety
 
-`anchorscope_apply` and `anchorscope_write` use `withFileMutationQueue`
-to serialize concurrent writes to the same file. This prevents data loss
-when multiple tool calls target the same file in the same agent turn.
+`anchoredit_apply` uses `withFileMutationQueue` to serialize concurrent
+writes to the same file. This prevents data loss when multiple tool calls
+target the same file in the same agent turn.
 
 ---
 
 ## 4. Skill (Informative)
 
-The `skills/anchorscope/SKILL.md` file provides LLM-facing guidance for
+The `skills/anchoredit/SKILL.md` file provides LLM-facing guidance for
 using this extension. It is loaded automatically by pi when the package
 is installed.
 
-### 4.1 When to Use anchorscope_apply
+### 4.1 When to Use anchoredit_apply
 
-Use `anchorscope_apply` for **all file edits**, including small files.
+Use `anchoredit_apply` for **all file edits**, including small files.
 Do not use the built-in `edit` or `write` tools.
 
-`anchorscope_apply` provides:
+`anchoredit_apply` provides:
 - Hash verification (detects concurrent modifications)
 - Exact byte-level matching (no fuzzy replacement)
 - Zero modification outside the matched scope
@@ -203,10 +143,10 @@ surrounding context.
 
 ### 4.3 Constructing content
 
-`content` is the **complete replacement** for the matched anchor scope.
+`content` is the **complete replacement** for the matched anchor text.
 
-- The entire anchor scope is replaced by `content`
-- Content outside the anchor scope is never modified
+- The entire anchor is replaced by `content`
+- Content outside the anchor is never modified
 - The agent is responsible for correctness of the replacement
 
 ### 4.4 Error Handling
@@ -222,7 +162,7 @@ surrounding context.
 
 ## 5. Non-Goals
 
-- Anchor discovery or scope localization (see AnchorEdit)
+- Anchor discovery or scope localization
 - Multi-file operations
 - Version history or snapshots
 - Semantic understanding of file content
@@ -242,5 +182,6 @@ surrounding context.
 
 ## 7. References
 
+- AnchorEdit v2: https://github.com/kmlaborat/AnchorEdit
+- AnchorEdit SPEC: https://github.com/kmlaborat/AnchorEdit/blob/main/docs/SPEC.md
 - AnchorScope v2.0.0: https://github.com/kmlaborat/AnchorScope
-- AnchorScope SPEC: https://github.com/kmlaborat/AnchorScope/blob/main/docs/SPEC.md

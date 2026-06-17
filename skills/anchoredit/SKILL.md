@@ -1,11 +1,11 @@
 ---
-name: pi-anchoredit
-description: "Hash-verified targeted file editing using AnchorScope. Use anchorscope_apply for ALL file edits — fixing bugs, refactoring functions, updating configuration values, or replacing any text block. Do NOT use the built-in edit or write tools. anchorscope_apply is safer, more precise, and prevents unintended changes outside the target scope."
+name: anchoredit
+description: "Hash-verified, targeted file editing using AnchorEdit. Use anchoredit_apply for ALL file edits — fixing bugs, refactoring functions, updating configuration values, or replacing any text block. Do NOT use the built-in edit or write tools."
 ---
 
 # anchoredit
 
-Use `anchorscope_apply` for all file edits. It is safer and more precise
+Use `anchoredit_apply` for all file edits. It is safer and more precise
 than the built-in `edit` tool because it verifies the file state before
 writing and guarantees zero modification outside the matched scope.
 
@@ -28,17 +28,17 @@ The anchor must appear **exactly once** in the file.
 The entire anchor is replaced by content.
 Nothing outside the anchor is touched.
 
-## Primary Tool: anchorscope_apply
+## Primary Tool: anchoredit_apply
 
 ```
-anchorscope_apply(
+anchoredit_apply(
   file: path to the file,
   anchor: exact text to match (must be unique in the file),
   content: complete replacement for the matched text
 )
 ```
 
-This is the only tool you need for file edits in most cases.
+This is the only tool you need for file edits.
 
 ### Example
 
@@ -51,7 +51,7 @@ fn calculate_area(width: f64, height: f64) -> f64 {
 
 To add validation:
 ```
-anchorscope_apply(
+anchoredit_apply(
   file: "src/calculator.rs",
   anchor: "fn calculate_area(width: f64, height: f64) -> f64 {\n    width * height\n}",
   content: "fn calculate_area(width: f64, height: f64) -> f64 {\n    if width < 0.0 || height < 0.0 {\n        return 0.0;\n    }\n    width * height\n}"
@@ -78,7 +78,7 @@ that includes more surrounding context.
 | :--- | :--- | :--- |
 | `NO_MATCH` | anchor not found in file | Read the file, verify anchor exists, revise |
 | `MULTIPLE_MATCHES` | anchor appears more than once | Use a longer, more specific anchor |
-| `HASH_MISMATCH` | file changed between read and write | Retry anchorscope_apply |
+| `HASH_MISMATCH` | file changed between read and write | Retry anchoredit_apply |
 | `IO_ERROR` | file not found or permission issue | Check file path |
 
 ## Anti-Patterns
@@ -87,14 +87,7 @@ that includes more surrounding context.
 - **Don't** use a short or common string as anchor (e.g., a single variable name)
 - **Don't** modify anchor between attempts — revise it based on the error
 
-## Low-Level Tools (Advanced Use Only)
-
-`anchorscope_read` and `anchorscope_write` are available for cases where
-you need to inspect the matched content before deciding on a replacement.
-
-In most cases, `anchorscope_apply` is sufficient.
-
 ## References
 
-- AnchorScope: https://github.com/kmlaborat/AnchorScope
 - AnchorEdit: https://github.com/kmlaborat/AnchorEdit
+- AnchorScope: https://github.com/kmlaborat/AnchorScope

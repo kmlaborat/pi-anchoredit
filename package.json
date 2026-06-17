@@ -1,11 +1,11 @@
 {
-  "name": "pi-anchorscope",
+  "name": "pi-anchoredit",
   "version": "2.0.0",
-  "description": "Hash-verified targeted file editing for pi coding agent.",
+  "description": "Hash-verified targeted file editing for pi coding agent, powered by AnchorEdit v2.",
   "keywords": ["pi-package"],
   "license": "MIT",
   "pi": {
     "skills": ["./skills"],
-    "extensions": ["./extensions/anchorscope"]
+    "extensions": ["./extensions/anchoredit"]
   }
 }
