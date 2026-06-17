@@ -1,5 +1,5 @@
 ---
-name: anchorscope
+name: pi-anchoredit
 description: "Hash-verified targeted file editing using AnchorScope. Use anchorscope_apply for ALL file edits — fixing bugs, refactoring functions, updating configuration values, or replacing any text block. Do NOT use the built-in edit or write tools. anchorscope_apply is safer, more precise, and prevents unintended changes outside the target scope."
 ---
 
