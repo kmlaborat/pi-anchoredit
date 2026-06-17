@@ -5,8 +5,39 @@ powered by AnchorEdit v2 / AnchorScope v2.0.0.
 
 ## What it does
 
-Provides `anchoredit_apply` — a single tool that safely applies
-targeted edits to files with hash verification.
+Replaces the built-in `edit` tool with `anchoredit_apply` — a safer,
+more precise editing tool that:
+- Matches an exact byte sequence (anchor) in a file
+- Verifies file state before writing (hash verification)
+- Guarantees zero modification outside the matched scope
+
+## Why pi-anchoredit?
+
+Hash-anchored edit tools like [oh-my-pi's Hashline](https://github.com/can1357/oh-my-pi) operate on **line-level content hashes** — the model references line anchors instead of reproducing text, which eliminates whitespace conflicts and ambiguous matches.
+This works well for conventional source code, where edits naturally align with line boundaries. However, modern workloads often break this assumption:
+* Minified or generated code
+* Large single-line JSON / config blobs
+* Inline structures where meaningful edits occur *within* a line
+In these cases, line-level anchoring becomes a limiting abstraction.
+
+## pi-anchoredit approach
+
+pi-anchoredit removes the notion of "lines" entirely and instead operates on **exact byte-level anchors**.
+* Anchors are matched as raw byte sequences
+* Edits target precise substrings within a file
+* No dependence on line structure or formatting
+
+This makes it particularly effective for:
+* Inline edits inside long single-line structures
+* JSON / minified / serialized formats
+* Binary file patching (firmware, binary configs, packed data)
+* Fine-grained patching where line granularity is too coarse
+
+## Positioning
+
+* **[oh-my-pi Hashline](https://github.com/can1357/oh-my-pi)**: optimized for *line-level editing efficiency*
+* **pi-anchoredit**: optimized for *intra-line precision and structure-agnostic editing*
+Rather than replacing line-based approaches, this project is designed as a **complementary tool for edge cases where line abstraction breaks down**.
 
 ## Prerequisites
 
